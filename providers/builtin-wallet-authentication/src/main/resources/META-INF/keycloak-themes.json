@@ -1,0 +1,8 @@
+{
+  "themes": [
+    {
+      "name" : "builtin-theme",
+      "types": [ "login" ]
+    }
+  ]
+}

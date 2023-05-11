@@ -1,0 +1,79 @@
+version: '3'
+volumes:
+  postgres_data:
+      driver: local
+  db_data:
+      driver: local
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+        - 80:80
+    networks:
+        - webnet2
+  mysql:
+    image: mysql/mysql-server:8.0
+    ports:
+      - "3307:3306"
+    command:
+      [
+        "--bind-address=0.0.0.0",
+        "--default-authentication-plugin=mysql_native_password",
+        "--sql_mode="
+      ]
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./mysql-dump:/docker-entrypoint-initdb.d
+    environment:
+      - "MYSQL_ROOT_PASSWORD=sesame"
+      - "MYSQL_USER=root"
+      - "MYSQL_DATABASE=gallery_dev"
+      - "MYSQL_ROOT_HOST=%"
+    networks:
+      - webnet2
+  postgres:
+      image: postgres
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      ports:
+        - 5433:5432
+      environment:
+        POSTGRES_DB: keycloak
+        POSTGRES_USER: keycloak
+        POSTGRES_PASSWORD: password
+      networks:
+        - webnet2
+  keycloak:
+      build:
+        context: ./
+        dockerfile: Dockerfile
+      environment:
+        DB_VENDOR: POSTGRES
+        DB_ADDR: postgres
+        DB_DATABASE: keycloak
+        DB_USER: keycloak
+        DB_SCHEMA: public
+        DB_PASSWORD: password
+        KEYCLOAK_ADMIN: admin
+        KEYCLOAK_ADMIN_PASSWORD: Pa55w0rd
+        PROXY_ADDRESS_FORWARDING: true
+        LEGACY_DB_USER: root
+        LEGACY_DB_PASSWORD: sesame
+        LEGACY_DB_JDBC_URL: jdbc:mysql://mysql/gallery_dev
+      ports:
+        - 8090:8080
+        - 8443:8443
+      depends_on:
+        - postgres
+        - nginx
+      restart: always
+      networks:
+        - server_webnet
+        - webnet2
+networks:
+  server_webnet:
+    name: custom_network
+  webnet2:
+    driver: bridge
